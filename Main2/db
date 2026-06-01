@@ -1,1 +1,317 @@
+-- Movement By SKITXX
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local character
+local humanoid
+local rootPart
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- MOVEMENT SETTINGS 
+local WALL_RUN_SPEED = 50       
+local WALL_JUMP_POWER = 90       
+local WALL_CHECK_DISTANCE = 4    
+local MAX_WALL_RUN_TIME = 2.5    
+local ACCELERATION = 2.5
+
+-- CAMERA SETTINGS 
+local CAMERA_TILT = 14            
+local CAMERA_SMOOTHNESS = 8       
+local BASE_FOV = 75
+local MAX_FOV = 90
+local FOV_SMOOTHNESS = 5          
+
+
+local wallRunning = false
+local wallRunStart = 0
+local currentWallNormal = nil
+local currentWallSide = nil
+
+local currentSpeed = 0
+local targetTilt = 0
+local currentTilt = 0
+local cameraRoll = 0              
+
+local wallJumping = false
+local wallJumpCooldown = false
+local jumpingConnection = nil
+
+-- SHAKES (AHHH)
+local shakeIntensity = 0
+local shakeDecay = 12
+
+-- COLORS
+local LIGHT_GREEN = Color3.fromRGB(144, 238, 144)
+local DARK_GREEN_OUTLINE = Color3.fromRGB(20, 60, 20)
+
+
+local movementGui = Instance.new("ScreenGui")
+movementGui.Name = "MovementNotificationGui"
+movementGui.ResetOnSpawn = false
+movementGui.Parent = playerGui
+
+local listFrame = Instance.new("Frame")
+listFrame.Name = "NotificationContainer"
+listFrame.Size = UDim2.new(0.3, 0, 0.4, 0)
+listFrame.Position = UDim2.new(0.35, 0, 0.58, 0)
+listFrame.BackgroundTransparency = 1
+listFrame.Parent = movementGui
+
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+uiListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+uiListLayout.Padding = UDim.new(0, 4)
+uiListLayout.Parent = listFrame
+
+
+local function showMovementText(text)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0.1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = LIGHT_GREEN
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 22
+	label.Parent = listFrame
+	
+	
+	local uiStroke = Instance.new("UIStroke")
+	uiStroke.Color = DARK_GREEN_OUTLINE
+	uiStroke.Thickness = 3
+	uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.TextColor
+	uiStroke.Parent = label
+	
+	
+	local tweenInfo = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local targetProperties = { TextTransparency = 1 }
+	local strokeProperties = { Transparency = 1 }
+	
+	local textTween = TweenService:Create(label, tweenInfo, targetProperties)
+	local strokeTween = TweenService:Create(uiStroke, tweenInfo, strokeProperties)
+	
+	task.delay(0.15, function()
+		textTween:Play()
+		strokeTween:Play()
+		
+		textTween.Completed:Connect(function()
+			label:Destroy()
+		end)
+	end)
+end
+
+
+local function applyCameraShake(intensity)
+	shakeIntensity = math.clamp(shakeIntensity + intensity, 0, 0.6)
+end
+
+local function setupCharacter(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	rootPart = char:WaitForChild("HumanoidRootPart")
+
+	camera.FieldOfView = BASE_FOV
+	humanoid.CameraOffset = Vector3.zero
+
+	wallRunning = false
+	wallJumping = false
+	currentSpeed = 0
+	currentTilt = 0
+	targetTilt = 0
+	cameraRoll = 0
+
+	if jumpingConnection then
+		jumpingConnection:Disconnect()
+	end
+
+	-- Ground / Bhop Detection
+	jumpingConnection = humanoid.Jumping:Connect(function(isActive)
+		if isActive and not wallRunning and not wallJumping then
+			showMovementText("BHOP")
+			applyCameraShake(0.2) -- Sharp jump pop
+		end
+	end)
+	
+	-- Heavy Landing Impact
+	humanoid.StateChanged:Connect(function(oldState, newState)
+		if newState == Enum.HumanoidStateType.Landed then
+			applyCameraShake(0.35)
+		end
+	end)
+end
+
+setupCharacter(player.Character or player.CharacterAdded:Wait())
+player.CharacterAdded:Connect(setupCharacter)
+
+local function getWall()
+	if not rootPart then
+		return nil
+	end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {character}
+
+	local rightRay = workspace:Raycast(rootPart.Position, rootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
+	if rightRay then return rightRay, "Right" end
+
+	local leftRay = workspace:Raycast(rootPart.Position, -rootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
+	if leftRay then return leftRay, "Left" end
+
+	return nil
+end
+
+local function stopWallRun()
+	wallRunning = false
+	currentWallNormal = nil
+	currentWallSide = nil
+	targetTilt = 0
+end
+
+local function startWallRun(hit, side)
+	if wallRunning or wallJumping then
+		return
+	end
+
+	wallRunning = true
+	wallRunStart = tick()
+	currentWallNormal = hit.Normal
+	currentWallSide = side
+	currentSpeed = math.max(currentSpeed, 15)
+	
+	applyCameraShake(0.25) -- Catch onto wall impact
+	showMovementText("WALL RUN (" .. string.upper(side) .. ")")
+end
+
+UserInputService.JumpRequest:Connect(function()
+	if not wallRunning or wallJumpCooldown or not currentWallNormal or not rootPart then
+		return
+	end
+
+	wallJumpCooldown = true
+	wallJumping = true
+
+	showMovementText("WALL JUMP")
+	applyCameraShake(0.4) -- Explosive leap impact
+
+	local jumpVelocity = (currentWallNormal * WALL_JUMP_POWER) + Vector3.new(0, 55, 0)
+	rootPart.AssemblyLinearVelocity = jumpVelocity
+
+	stopWallRun()
+
+	task.delay(0.3, function() wallJumping = false end)
+	task.delay(0.25, function() wallJumpCooldown = false end)
+end)
+
+RunService.Heartbeat:Connect(function(dt)
+	if not humanoid or not rootPart then
+		return
+	end
+
+	if not wallJumping and humanoid.FloorMaterial == Enum.Material.Air then
+		local wall, side = getWall()
+		if wall then
+			if not wallRunning then startWallRun(wall, side) else currentWallNormal = wall.Normal; currentWallSide = side end
+		else
+			stopWallRun()
+		end
+	else
+		if not wallJumping then stopWallRun() end
+	end
+
+	if wallRunning then
+		if tick() - wallRunStart > MAX_WALL_RUN_TIME then
+			stopWallRun()
+			return
+		end
+
+		local wallDirection = currentWallNormal:Cross(Vector3.new(0, 1, 0))
+		local moveDir = humanoid.MoveDirection
+
+		if moveDir.Magnitude > 0 and moveDir:Dot(wallDirection) < 0 then
+			wallDirection = -wallDirection
+		end
+
+		currentSpeed = math.min(currentSpeed + (ACCELERATION * 60 * dt), WALL_RUN_SPEED)
+		local currentVelocity = rootPart.AssemblyLinearVelocity
+
+		rootPart.AssemblyLinearVelocity = Vector3.new(
+			wallDirection.X * currentSpeed,
+			math.max(currentVelocity.Y, -2), -- Minor vertical slide friction
+			wallDirection.Z * currentSpeed
+		)
+
+		targetTilt = (currentWallSide == "Right") and CAMERA_TILT or -CAMERA_TILT
+	else
+		currentSpeed *= 0.96
+		targetTilt = 0
+	end
+end)
+
+-- COMPREHENSIVE ATMOSPHERIC RENDER STEP
+RunService.RenderStepped:Connect(function(dt)
+	if not humanoid or not rootPart then
+		return
+	end
+
+	local velocity = rootPart.AssemblyLinearVelocity
+	local horizontalVelocity = Vector3.new(velocity.X, 0, velocity.Z)
+	local speed = horizontalVelocity.Magnitude
+
+	
+	local relativeMove = rootPart.CFrame:VectorToObjectSpace(horizontalVelocity)
+	local strafeTarget = -relativeMove.X * 0.18
+	cameraRoll = cameraRoll + (strafeTarget - cameraRoll) * math.clamp(dt * 6, 0, 1)
+
+	
+	currentTilt = currentTilt + (targetTilt - currentTilt) * math.clamp(dt * CAMERA_SMOOTHNESS, 0, 1)
+
+	
+	local bobX = 0
+	local bobY = 0
+	
+	if speed > 1 then
+		if wallRunning then
+			bobY = math.sin(time() * 14) * 0.06
+			bobX = math.cos(time() * 7) * 0.03
+		elseif humanoid.FloorMaterial ~= Enum.Material.Air then
+			local bobMultiplier = math.clamp(speed / WALL_RUN_SPEED, 0.2, 1)
+			bobY = math.sin(time() * 12) * (0.04 * bobMultiplier)
+			bobX = math.cos(time() * 6) * (0.02 * bobMultiplier)
+		end
+	end
+
+	
+	if shakeIntensity > 0 then
+		shakeIntensity = math.max(0, shakeIntensity - (dt * shakeDecay))
+	end
+	local appliedShakeX = (math.random(-100, 100) / 100) * shakeIntensity * 0.15
+	local appliedShakeY = (math.random(-100, 100) / 100) * shakeIntensity * 0.15
+
+	
+	humanoid.CameraOffset = Vector3.new(
+		(currentTilt * 0.035) + bobX + appliedShakeX, 
+		bobY + appliedShakeY, 
+		0
+	)
+
+	
+	local finalRoll = currentTilt + cameraRoll + (appliedShakeX * 15)
+	camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, math.rad(finalRoll))
+
+	
+	local targetFOV = BASE_FOV
+	if wallRunning then
+		targetFOV = MAX_FOV
+	else
+		targetFOV = BASE_FOV + math.clamp(speed / 4, 0, (MAX_FOV - BASE_FOV))
+	end
+
+	camera.FieldOfView = camera.FieldOfView + (targetFOV - camera.FieldOfView) * math.clamp(dt * FOV_SMOOTHNESS, 0, 1)
+end)
