@@ -1,1 +1,1 @@
-loadstring(game:HttpGet("https://pastebin.com/raw/Y9J4QZzA"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Nerdxo0707/Dynamic-Evade-Movement-Script/refs/heads/main/Main2/db"))()
