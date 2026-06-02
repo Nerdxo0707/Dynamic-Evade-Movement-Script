@@ -14,19 +14,19 @@ local humanoid
 local rootPart
 local playerGui = player:WaitForChild("PlayerGui")
 
--- MOVEMENT CONFIGS (DO NOT TOUCH UNLESS YOU KNOW SMTH)
-local WALL_RUN_SPEED = 50        
-local WALL_JUMP_POWER = 90      
-local WALL_CHECK_DISTANCE = 4    
-local MAX_WALL_RUN_TIME = 2.5
+-- MOVEMENT CONFIGS (DO NOT TOUCH UNLESS YOU HAVE THE 200 IQ)
+local WALL_RUN_SPEED = 50        -- buddy is zoomin
+local WALL_JUMP_POWER = 90       -- full send off the wall
+local WALL_CHECK_DISTANCE = 4    -- checking if the wall is a real one
+local MAX_WALL_RUN_TIME = 2.5    -- wall running has a time limit, no camping
 local ACCELERATION = 2.5
 
--- CINEMATIC
-local CAMERA_TILT = 14            
-local CAMERA_SMOOTHNESS = 8       
+-- CINEMATIC VIBES (MAXIMUM IMMERSION)
+local CAMERA_TILT = 14            -- dynamic camera tilt goes hard
+local CAMERA_SMOOTHNESS = 8       -- buttery smooth panned view
 local BASE_FOV = 75
 local MAX_FOV = 90
-local FOV_SMOOTHNESS = 5          
+local FOV_SMOOTHNESS = 5          -- fov warp factor basically
 
 -- STATE VARIABLES (LET THEM COOK)
 local wallRunning = false
@@ -37,16 +37,36 @@ local currentWallSide = nil
 local currentSpeed = 0
 local targetTilt = 0
 local currentTilt = 0
-local cameraRoll = 0              
+local cameraRoll = 0              -- banking mid-air is a certified hood classic
 
 local wallJumping = false
 local wallJumpCooldown = false
 local jumpingConnection = nil
 
--- ShakeS
+-- Impact Shake Variables (Giving it that extra crunch)
 local shakeIntensity = 0
 local shakeDecay = 12
 
+-- --- THE ARIMO FONT OVERLORD SYSTEM (FORCING THE AESTHETIC) ---
+-- This function gatekeeps the font type for any text asset
+local function forceArimoFont(object)
+	if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+		object.Font = Enum.Font.Arimo
+	end
+end
+
+-- Scan existing UI elements already sitting in PlayerGui
+for _, descendant in ipairs(playerGui:GetDescendants()) do
+	forceArimoFont(descendant)
+end
+
+-- Actively watch for any new UI dropping into the game later (No exceptions)
+playerGui.DescendantAdded:Connect(function(descendant)
+	forceArimoFont(descendant)
+end)
+-- -------------------------------------------------------------
+
+-- --- THE MAIN CHARACTER ENTERS THE CHAT ("Skitx" Pop-up) ---
 local function runStartupSequence()
 	local startupGui = Instance.new("ScreenGui")
 	startupGui.Name = "SkitxStartupGui"
@@ -67,7 +87,7 @@ local function runStartupSequence()
 	local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tweenInfoOut = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
-	
+	-- Fade in, vibe check, fade out
 	local fadeIn = TweenService:Create(startupLabel, tweenInfoIn, { TextTransparency = 0 })
 	local fadeOut = TweenService:Create(startupLabel, tweenInfoOut, { TextTransparency = 1 })
 
@@ -81,11 +101,11 @@ local function runStartupSequence()
 	end)
 end
 
-
+-- Fire the opening title sequence immediately on spawn
 runStartupSequence()
 -- -------------------------------------
 
-
+-- camera screen shake function, adds that physical kinetic weight
 local function applyCameraShake(intensity)
 	shakeIntensity = math.clamp(shakeIntensity + intensity, 0, 0.6)
 end
