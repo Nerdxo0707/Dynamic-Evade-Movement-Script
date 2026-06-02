@@ -1,4 +1,5 @@
--- Movement By SKITXX
+-- ngl this movement system goes crazy fr
+-- LocalScript inside StarterPlayer > StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,21 +14,21 @@ local humanoid
 local rootPart
 local playerGui = player:WaitForChild("PlayerGui")
 
--- MOVEMENT SETTINGS 
-local WALL_RUN_SPEED = 50       
-local WALL_JUMP_POWER = 90       
+-- MOVEMENT CONFIGS (DO NOT TOUCH UNLESS YOU KNOW SMTH)
+local WALL_RUN_SPEED = 50        
+local WALL_JUMP_POWER = 90      
 local WALL_CHECK_DISTANCE = 4    
-local MAX_WALL_RUN_TIME = 2.5    
+local MAX_WALL_RUN_TIME = 2.5
 local ACCELERATION = 2.5
 
--- CAMERA SETTINGS 
+-- CINEMATIC
 local CAMERA_TILT = 14            
 local CAMERA_SMOOTHNESS = 8       
 local BASE_FOV = 75
 local MAX_FOV = 90
 local FOV_SMOOTHNESS = 5          
 
-
+-- STATE VARIABLES (LET THEM COOK)
 local wallRunning = false
 local wallRunStart = 0
 local currentWallNormal = nil
@@ -42,69 +43,47 @@ local wallJumping = false
 local wallJumpCooldown = false
 local jumpingConnection = nil
 
--- SHAKES (AHHH)
+-- ShakeS
 local shakeIntensity = 0
 local shakeDecay = 12
 
--- COLORS
-local LIGHT_GREEN = Color3.fromRGB(144, 238, 144)
-local DARK_GREEN_OUTLINE = Color3.fromRGB(20, 60, 20)
+local function runStartupSequence()
+	local startupGui = Instance.new("ScreenGui")
+	startupGui.Name = "SkitxStartupGui"
+	startupGui.ResetOnSpawn = false
+	startupGui.Parent = playerGui
 
+	local startupLabel = Instance.new("TextLabel")
+	startupLabel.Size = UDim2.new(1, 0, 0.1, 0)
+	startupLabel.Position = UDim2.new(0, 0, 0.45, 0) -- dead center, built different
+	startupLabel.BackgroundTransparency = 1
+	startupLabel.Text = "Skitx"
+	startupLabel.TextColor3 = Color3.new(1, 1, 1) -- pure clean white aesthetic
+	startupLabel.Font = Enum.Font.Arimo -- Arimo font enjoys standard W
+	startupLabel.TextSize = 36
+	startupLabel.TextTransparency = 1 -- start invisible, lowkey suspenseful
+	startupLabel.Parent = startupGui
 
-local movementGui = Instance.new("ScreenGui")
-movementGui.Name = "MovementNotificationGui"
-movementGui.ResetOnSpawn = false
-movementGui.Parent = playerGui
+	local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tweenInfoOut = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
-local listFrame = Instance.new("Frame")
-listFrame.Name = "NotificationContainer"
-listFrame.Size = UDim2.new(0.3, 0, 0.4, 0)
-listFrame.Position = UDim2.new(0.35, 0, 0.58, 0)
-listFrame.BackgroundTransparency = 1
-listFrame.Parent = movementGui
+	
+	local fadeIn = TweenService:Create(startupLabel, tweenInfoIn, { TextTransparency = 0 })
+	local fadeOut = TweenService:Create(startupLabel, tweenInfoOut, { TextTransparency = 1 })
 
-local uiListLayout = Instance.new("UIListLayout")
-uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-uiListLayout.Padding = UDim.new(0, 4)
-uiListLayout.Parent = listFrame
-
-
-local function showMovementText(text)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0.1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.TextColor3 = LIGHT_GREEN
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 22
-	label.Parent = listFrame
-	
-	
-	local uiStroke = Instance.new("UIStroke")
-	uiStroke.Color = DARK_GREEN_OUTLINE
-	uiStroke.Thickness = 3
-	uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.TextColor
-	uiStroke.Parent = label
-	
-	
-	local tweenInfo = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local targetProperties = { TextTransparency = 1 }
-	local strokeProperties = { Transparency = 1 }
-	
-	local textTween = TweenService:Create(label, tweenInfo, targetProperties)
-	local strokeTween = TweenService:Create(uiStroke, tweenInfo, strokeProperties)
-	
-	task.delay(0.15, function()
-		textTween:Play()
-		strokeTween:Play()
-		
-		textTween.Completed:Connect(function()
-			label:Destroy()
+	fadeIn:Play()
+	fadeIn.Completed:Connect(function()
+		task.wait(1.2) -- letting it sit there so they see who made it
+		fadeOut:Play()
+		fadeOut.Completed:Connect(function()
+			startupGui:Destroy() -- delete from existence, tidy code fr
 		end)
 	end)
 end
+
+
+runStartupSequence()
+-- -------------------------------------
 
 
 local function applyCameraShake(intensity)
@@ -130,18 +109,17 @@ local function setupCharacter(char)
 		jumpingConnection:Disconnect()
 	end
 
-	-- Ground / Bhop Detection
+	-- Ground / Bhop Detection (Just the physics shake since text got deleted)
 	jumpingConnection = humanoid.Jumping:Connect(function(isActive)
 		if isActive and not wallRunning and not wallJumping then
-			showMovementText("BHOP")
-			applyCameraShake(0.2) -- Sharp jump pop
+			applyCameraShake(0.2) -- sharp pop for that perfect bhop timing
 		end
 	end)
 	
-	-- Heavy Landing Impact
+	-- landing heavy on the concrete shake effect
 	humanoid.StateChanged:Connect(function(oldState, newState)
 		if newState == Enum.HumanoidStateType.Landed then
-			applyCameraShake(0.35)
+			applyCameraShake(0.35) -- boom, landing impact hit hard
 		end
 	end)
 end
@@ -158,9 +136,11 @@ local function getWall()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = {character}
 
+	-- raycasting right to check if a wall is nearby
 	local rightRay = workspace:Raycast(rootPart.Position, rootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
 	if rightRay then return rightRay, "Right" end
 
+	-- raycasting left because equality matters
 	local leftRay = workspace:Raycast(rootPart.Position, -rootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
 	if leftRay then return leftRay, "Left" end
 
@@ -185,21 +165,20 @@ local function startWallRun(hit, side)
 	currentWallSide = side
 	currentSpeed = math.max(currentSpeed, 15)
 	
-	applyCameraShake(0.25) -- Catch onto wall impact
-	showMovementText("WALL RUN (" .. string.upper(side) .. ")")
+	applyCameraShake(0.25) -- screen shake when you lock onto the geometry
 end
 
 UserInputService.JumpRequest:Connect(function()
 	if not wallRunning or wallJumpCooldown or not currentWallNormal or not rootPart then
-		return
+		return -- can't jump if you aren't even on a wall, clear skill issue
 	end
 
 	wallJumpCooldown = true
 	wallJumping = true
 
-	showMovementText("WALL JUMP")
-	applyCameraShake(0.4) -- Explosive leap impact
+	applyCameraShake(0.4) -- mega screen rattle for the massive leap
 
+	-- math equations doing backflips to calculate the eject trajectory
 	local jumpVelocity = (currentWallNormal * WALL_JUMP_POWER) + Vector3.new(0, 55, 0)
 	rootPart.AssemblyLinearVelocity = jumpVelocity
 
@@ -214,6 +193,7 @@ RunService.Heartbeat:Connect(function(dt)
 		return
 	end
 
+	-- checking if bro is airborne and trying to parkour
 	if not wallJumping and humanoid.FloorMaterial == Enum.Material.Air then
 		local wall, side = getWall()
 		if wall then
@@ -227,10 +207,11 @@ RunService.Heartbeat:Connect(function(dt)
 
 	if wallRunning then
 		if tick() - wallRunStart > MAX_WALL_RUN_TIME then
-			stopWallRun()
+			stopWallRun() -- user stayed on the wall too long, fell off + ratio
 			return
 		end
 
+		-- cross vectors logic (don't worry about it, it just works)
 		local wallDirection = currentWallNormal:Cross(Vector3.new(0, 1, 0))
 		local moveDir = humanoid.MoveDirection
 
@@ -241,20 +222,21 @@ RunService.Heartbeat:Connect(function(dt)
 		currentSpeed = math.min(currentSpeed + (ACCELERATION * 60 * dt), WALL_RUN_SPEED)
 		local currentVelocity = rootPart.AssemblyLinearVelocity
 
+		-- setting the vector3 velocity straight to make them slide smooth
 		rootPart.AssemblyLinearVelocity = Vector3.new(
 			wallDirection.X * currentSpeed,
-			math.max(currentVelocity.Y, -2), -- Minor vertical slide friction
+			math.max(currentVelocity.Y, -2), -- gravity deceleration fake friction
 			wallDirection.Z * currentSpeed
 		)
 
 		targetTilt = (currentWallSide == "Right") and CAMERA_TILT or -CAMERA_TILT
 	else
-		currentSpeed *= 0.96
+		currentSpeed *= 0.96 -- speed drop-off is real
 		targetTilt = 0
 	end
 end)
 
--- COMPREHENSIVE ATMOSPHERIC RENDER STEP
+-- --- THE CINEMATIC RENDER LOOP (VISUAL MASTERPIECE) ---
 RunService.RenderStepped:Connect(function(dt)
 	if not humanoid or not rootPart then
 		return
@@ -264,48 +246,49 @@ RunService.RenderStepped:Connect(function(dt)
 	local horizontalVelocity = Vector3.new(velocity.X, 0, velocity.Z)
 	local speed = horizontalVelocity.Magnitude
 
-	
+	-- 1. Momentum Banking (Tilting the camera when strafing mid-air, very clean)
 	local relativeMove = rootPart.CFrame:VectorToObjectSpace(horizontalVelocity)
 	local strafeTarget = -relativeMove.X * 0.18
 	cameraRoll = cameraRoll + (strafeTarget - cameraRoll) * math.clamp(dt * 6, 0, 1)
 
-	
+	-- 2. Wall run camera tilt interpolation
 	currentTilt = currentTilt + (targetTilt - currentTilt) * math.clamp(dt * CAMERA_SMOOTHNESS, 0, 1)
 
-	
+	-- 3. Layered Headbob (Simulating steps so the camera isn't stiff as a board)
 	local bobX = 0
 	local bobY = 0
 	
 	if speed > 1 then
 		if wallRunning then
-			bobY = math.sin(time() * 14) * 0.06
+			bobY = math.sin(time() * 14) * 0.06 -- quick head bob while wall running
 			bobX = math.cos(time() * 7) * 0.03
 		elseif humanoid.FloorMaterial ~= Enum.Material.Air then
+			-- regular running headbob scaled by your current velocity magnitude
 			local bobMultiplier = math.clamp(speed / WALL_RUN_SPEED, 0.2, 1)
 			bobY = math.sin(time() * 12) * (0.04 * bobMultiplier)
 			bobX = math.cos(time() * 6) * (0.02 * bobMultiplier)
 		end
 	end
 
-	
+	-- 4. Handshake mathematics calculating camera trauma/shaking
 	if shakeIntensity > 0 then
 		shakeIntensity = math.max(0, shakeIntensity - (dt * shakeDecay))
 	end
 	local appliedShakeX = (math.random(-100, 100) / 100) * shakeIntensity * 0.15
 	local appliedShakeY = (math.random(-100, 100) / 100) * shakeIntensity * 0.15
 
-	
+	-- Inject offsets straight into the Roblox camera core system
 	humanoid.CameraOffset = Vector3.new(
 		(currentTilt * 0.035) + bobX + appliedShakeX, 
 		bobY + appliedShakeY, 
 		0
 	)
 
-	
+	-- 5. Combine camera tilt, keyboard lean, and impact vibration into the CFrame matrix
 	local finalRoll = currentTilt + cameraRoll + (appliedShakeX * 15)
 	camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, math.rad(finalRoll))
 
-	
+	-- 6. Dynamic Field Of View changes based on speed (feels fast af)
 	local targetFOV = BASE_FOV
 	if wallRunning then
 		targetFOV = MAX_FOV
