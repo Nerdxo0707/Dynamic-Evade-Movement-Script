@@ -1,4 +1,4 @@
-# Skitx Movement v1.3 (Upd)
+# Skitx Movement v1.4 (Upd)
 * **Better Wall Running:** the wall run in evade is ass so i tweaked it a bit
 * **Wall Jumping:** was also ass but also tweaked (its a little more subtle)
 * **Bhop Shower thing:** discontinued but will be back probably
