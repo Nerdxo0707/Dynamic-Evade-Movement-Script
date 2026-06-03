@@ -6,13 +6,13 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
-local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
-local character
-local humanoid
-local rootPart
-local playerGui = player:WaitForChild("PlayerGui")
+local CHARACTER = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = CHARACTER:WaitForChild("Humanoid")
+local RootPart = CHARACTER:WaitForChild("HumanoidRootPart")
+local playerGui = Player:WaitForChild("PlayerGui")
 
 -- MOVEMENT CONFIGS (DO NOT TOUCH UNLESS YOU HAVE THE 200 IQ)
 local WALL_RUN_SPEED = 50        -- buddy is zoomin
@@ -21,50 +21,96 @@ local WALL_CHECK_DISTANCE = 4    -- checking if the wall is a real one
 local MAX_WALL_RUN_TIME = 2.5    -- wall running has a time limit, no camping
 local ACCELERATION = 2.5
 
--- CINEMATIC VIBES (MAXIMUM IMMERSION)
-local CAMERA_TILT = 14            -- dynamic camera tilt goes hard
-local CAMERA_SMOOTHNESS = 8       -- buttery smooth panned view
-local BASE_FOV = 75
-local MAX_FOV = 90
-local FOV_SMOOTHNESS = 5          -- fov warp factor basically
+-- YOUR CUSTOM CAMERA VALUES
+local BASE_FOV = 70
+local MAX_FOV = 82
+local FOV_SMOOTHNESS = 0.1
+
+local TILT_AMOUNT = 5
+local SWAY_SPEED = 10
+local SWAY_AMOUNT = 0.10
+
+-- WALL RUN EXTRA CAMERA TWIST
+local WALL_RUN_TILT = 14          -- leaning into the wall run hits different
 
 -- STATE VARIABLES (LET THEM COOK)
 local wallRunning = false
 local wallRunStart = 0
 local currentWallNormal = nil
 local currentWallSide = nil
-
 local currentSpeed = 0
-local targetTilt = 0
-local currentTilt = 0
-local cameraRoll = 0              -- banking mid-air is a certified hood classic
 
 local wallJumping = false
 local wallJumpCooldown = false
-local jumpingConnection = nil
 
--- Impact Shake Variables (Giving it that extra crunch)
-local shakeIntensity = 0
-local shakeDecay = 12
+local currentTilt = 0
+local swayTime = 0
 
--- --- THE ARIMO FONT OVERLORD SYSTEM (FORCING THE AESTHETIC) ---
--- This function gatekeeps the font type for any text asset
-local function forceArimoFont(object)
+Camera.FieldOfView = BASE_FOV
+
+-- --- PRESET MONOCHROME GRADIENTS (CLEAN FR) ---
+local textGradientSequence = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), -- Pure crisp white at the top
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 160, 160))  -- Clean silver-gray at the bottom
+})
+
+local bgGradientSequence = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),    -- Dark charcoal top
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 15))     -- Near pitch-black bottom
+})
+
+-- --- THE ARIMO + MONOCHROME GRADIENT OVERLORD SYSTEM ---
+local function forceGradientAndArimo(object)
+	-- Check if the object is an actual text container
 	if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
 		object.Font = Enum.Font.Arimo
+		object.TextColor3 = Color3.new(1, 1, 1) -- Set base to white so gradient renders perfectly
+		
+		-- Slap a text gradient on it if it doesn't already have one
+		if not object:FindFirstChildOfClass("UIGradient") then
+			local textGrad = Instance.new("UIGradient")
+			textGrad.Color = textGradientSequence
+			textGrad.Rotation = 90 -- Vertical fade
+			textGrad.Parent = object
+		end
+		
+		-- If it has a solid background, give it that dark metallic gradient vibe
+		if object.BackgroundTransparency < 1 inside object then
+			object.BackgroundColor3 = Color3.new(1, 1, 1) -- Reset base color for background gradient mapping
+			local bgGrad = Instance.new("UIGradient")
+			bgGrad.Color = bgGradientSequence
+			bgGrad.Rotation = 90
+			bgGrad.Parent = object
+		end
+	end
+	
+	-- Handle standalone frames/background menus to keep everything unified
+	if object:IsA("Frame") or object:IsA("ScrollingFrame") then
+		if object.BackgroundTransparency < 1 and not object:FindFirstChildOfClass("UIGradient") then
+			object.BackgroundColor3 = Color3.new(1, 1, 1)
+			local frameGrad = Instance.new("UIGradient")
+			frameGrad.Color = bgGradientSequence
+			frameGrad.Rotation = 90
+			frameGrad.Parent = object
+		end
+	end
+	
+	-- Keep borders completely dark and high contrast
+	if object:IsA("UIStroke") then
+		object.Color = Color3.fromRGB(20, 20, 20)
 	end
 end
 
--- Scan existing UI elements already sitting in PlayerGui
+-- Process everything currently on screen
 for _, descendant in ipairs(playerGui:GetDescendants()) do
-	forceArimoFont(descendant)
+	forceGradientAndArimo(descendant)
 end
 
--- Actively watch for any new UI dropping into the game later (No exceptions)
+-- Process any new UI clones instantly
 playerGui.DescendantAdded:Connect(function(descendant)
-	forceArimoFont(descendant)
+	forceGradientAndArimo(descendant)
 end)
--- -------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 -- --- THE MAIN CHARACTER ENTERS THE CHAT ("Skitx" Pop-up) ---
 local function runStartupSequence()
@@ -75,93 +121,67 @@ local function runStartupSequence()
 
 	local startupLabel = Instance.new("TextLabel")
 	startupLabel.Size = UDim2.new(1, 0, 0.1, 0)
-	startupLabel.Position = UDim2.new(0, 0, 0.45, 0) -- dead center, built different
+	startupLabel.Position = UDim2.new(0, 0, 0.45, 0) -- dead center
 	startupLabel.BackgroundTransparency = 1
 	startupLabel.Text = "Skitx"
-	startupLabel.TextColor3 = Color3.new(1, 1, 1) -- pure clean white aesthetic
-	startupLabel.Font = Enum.Font.Arimo -- Arimo font enjoys standard W
+	startupLabel.TextColor3 = Color3.new(1, 1, 1)
+	startupLabel.Font = Enum.Font.Arimo
 	startupLabel.TextSize = 36
-	startupLabel.TextTransparency = 1 -- start invisible, lowkey suspenseful
+	startupLabel.TextTransparency = 1
 	startupLabel.Parent = startupGui
+
+	-- Apply the exact same text gradient to the startup title
+	local titleGrad = Instance.new("UIGradient")
+	titleGrad.Color = textGradientSequence
+	titleGrad.Rotation = 90
+	titleGrad.Parent = startupLabel
 
 	local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tweenInfoOut = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
-	-- Fade in, vibe check, fade out
 	local fadeIn = TweenService:Create(startupLabel, tweenInfoIn, { TextTransparency = 0 })
 	local fadeOut = TweenService:Create(startupLabel, tweenInfoOut, { TextTransparency = 1 })
 
 	fadeIn:Play()
 	fadeIn.Completed:Connect(function()
-		task.wait(1.2) -- letting it sit there so they see who made it
+		task.wait(1.2)
 		fadeOut:Play()
 		fadeOut.Completed:Connect(function()
-			startupGui:Destroy() -- delete from existence, tidy code fr
+			startupGui:Destroy()
 		end)
 	end)
 end
 
--- Fire the opening title sequence immediately on spawn
 runStartupSequence()
 -- -------------------------------------
 
--- camera screen shake function, adds that physical kinetic weight
-local function applyCameraShake(intensity)
-	shakeIntensity = math.clamp(shakeIntensity + intensity, 0, 0.6)
-end
-
-local function setupCharacter(char)
-	character = char
-	humanoid = char:WaitForChild("Humanoid")
-	rootPart = char:WaitForChild("HumanoidRootPart")
-
-	camera.FieldOfView = BASE_FOV
-	humanoid.CameraOffset = Vector3.zero
-
+local function CharacterAdded(char)
+	CHARACTER = char
+	Humanoid = char:WaitForChild("Humanoid")
+	RootPart = char:WaitForChild("HumanoidRootPart")
+	
 	wallRunning = false
 	wallJumping = false
 	currentSpeed = 0
 	currentTilt = 0
-	targetTilt = 0
-	cameraRoll = 0
-
-	if jumpingConnection then
-		jumpingConnection:Disconnect()
-	end
-
-	-- Ground / Bhop Detection (Just the physics shake since text got deleted)
-	jumpingConnection = humanoid.Jumping:Connect(function(isActive)
-		if isActive and not wallRunning and not wallJumping then
-			applyCameraShake(0.2) -- sharp pop for that perfect bhop timing
-		end
-	end)
-	
-	-- landing heavy on the concrete shake effect
-	humanoid.StateChanged:Connect(function(oldState, newState)
-		if newState == Enum.HumanoidStateType.Landed then
-			applyCameraShake(0.35) -- boom, landing impact hit hard
-		end
-	end)
+	swayTime = 0
 end
 
-setupCharacter(player.Character or player.CharacterAdded:Wait())
-player.CharacterAdded:Connect(setupCharacter)
+Player.CharacterAdded:Connect(CharacterAdded)
 
 local function getWall()
-	if not rootPart then
+	if not RootPart then
 		return nil
 	end
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = {character}
+	params.FilterDescendantsInstances = {CHARACTER}
 
-	-- raycasting right to check if a wall is nearby
-	local rightRay = workspace:Raycast(rootPart.Position, rootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
+	local rightRay = workspace:Raycast(RootPart.Position, RootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
 	if rightRay then return rightRay, "Right" end
 
-	-- raycasting left because equality matters
-	local leftRay = workspace:Raycast(rootPart.Position, -rootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
+	local leftRay = workspace:Raycast(RootPart.Position, -RootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
 	if leftRay then return leftRay, "Left" end
 
 	return nil
@@ -171,7 +191,6 @@ local function stopWallRun()
 	wallRunning = false
 	currentWallNormal = nil
 	currentWallSide = nil
-	targetTilt = 0
 end
 
 local function startWallRun(hit, side)
@@ -184,23 +203,18 @@ local function startWallRun(hit, side)
 	currentWallNormal = hit.Normal
 	currentWallSide = side
 	currentSpeed = math.max(currentSpeed, 15)
-	
-	applyCameraShake(0.25) -- screen shake when you lock onto the geometry
 end
 
 UserInputService.JumpRequest:Connect(function()
-	if not wallRunning or wallJumpCooldown or not currentWallNormal or not rootPart then
-		return -- can't jump if you aren't even on a wall, clear skill issue
+	if not wallRunning or wallJumpCooldown or not currentWallNormal or not RootPart then
+		return
 	end
 
 	wallJumpCooldown = true
 	wallJumping = true
 
-	applyCameraShake(0.4) -- mega screen rattle for the massive leap
-
-	-- math equations doing backflips to calculate the eject trajectory
 	local jumpVelocity = (currentWallNormal * WALL_JUMP_POWER) + Vector3.new(0, 55, 0)
-	rootPart.AssemblyLinearVelocity = jumpVelocity
+	RootPart.AssemblyLinearVelocity = jumpVelocity
 
 	stopWallRun()
 
@@ -209,12 +223,11 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 RunService.Heartbeat:Connect(function(dt)
-	if not humanoid or not rootPart then
+	if not Humanoid or not RootPart then
 		return
 	end
 
-	-- checking if bro is airborne and trying to parkour
-	if not wallJumping and humanoid.FloorMaterial == Enum.Material.Air then
+	if not wallJumping and Humanoid.FloorMaterial == Enum.Material.Air then
 		local wall, side = getWall()
 		if wall then
 			if not wallRunning then startWallRun(wall, side) else currentWallNormal = wall.Normal; currentWallSide = side end
@@ -227,94 +240,74 @@ RunService.Heartbeat:Connect(function(dt)
 
 	if wallRunning then
 		if tick() - wallRunStart > MAX_WALL_RUN_TIME then
-			stopWallRun() -- user stayed on the wall too long, fell off + ratio
+			stopWallRun()
 			return
 		end
 
-		-- cross vectors logic (don't worry about it, it just works)
 		local wallDirection = currentWallNormal:Cross(Vector3.new(0, 1, 0))
-		local moveDir = humanoid.MoveDirection
+		local moveDir = Humanoid.MoveDirection
 
 		if moveDir.Magnitude > 0 and moveDir:Dot(wallDirection) < 0 then
 			wallDirection = -wallDirection
 		end
 
 		currentSpeed = math.min(currentSpeed + (ACCELERATION * 60 * dt), WALL_RUN_SPEED)
-		local currentVelocity = rootPart.AssemblyLinearVelocity
+		local currentVelocity = RootPart.AssemblyLinearVelocity
 
-		-- setting the vector3 velocity straight to make them slide smooth
-		rootPart.AssemblyLinearVelocity = Vector3.new(
+		RootPart.AssemblyLinearVelocity = Vector3.new(
 			wallDirection.X * currentSpeed,
-			math.max(currentVelocity.Y, -2), -- gravity deceleration fake friction
+			math.max(currentVelocity.Y, -2),
 			wallDirection.Z * currentSpeed
 		)
-
-		targetTilt = (currentWallSide == "Right") and CAMERA_TILT or -CAMERA_TILT
 	else
-		currentSpeed *= 0.96 -- speed drop-off is real
-		targetTilt = 0
+		currentSpeed *= 0.96
 	end
 end)
 
--- --- THE CINEMATIC RENDER LOOP (VISUAL MASTERPIECE) ---
+-- --- CAMERA RENDER LOOP ---
 RunService.RenderStepped:Connect(function(dt)
-	if not humanoid or not rootPart then
+	if not CHARACTER or not Humanoid or not RootPart then
 		return
 	end
 
-	local velocity = rootPart.AssemblyLinearVelocity
-	local horizontalVelocity = Vector3.new(velocity.X, 0, velocity.Z)
-	local speed = horizontalVelocity.Magnitude
+	local moveDirection = Humanoid.MoveDirection
+	local velocity = RootPart.AssemblyLinearVelocity
+	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
 
-	-- 1. Momentum Banking (Tilting the camera when strafing mid-air, very clean)
-	local relativeMove = rootPart.CFrame:VectorToObjectSpace(horizontalVelocity)
-	local strafeTarget = -relativeMove.X * 0.18
-	cameraRoll = cameraRoll + (strafeTarget - cameraRoll) * math.clamp(dt * 6, 0, 1)
+	-- Dynamic FOV
+	local targetFOV = BASE_FOV + math.clamp(speed / 2, 0, MAX_FOV - BASE_FOV)
+	Camera.FieldOfView += (targetFOV - Camera.FieldOfView) * FOV_SMOOTHNESS
 
-	-- 2. Wall run camera tilt interpolation
-	currentTilt = currentTilt + (targetTilt - currentTilt) * math.clamp(dt * CAMERA_SMOOTHNESS, 0, 1)
+	-- Strafing Tilt Calculation
+	local rightVector = RootPart.CFrame.RightVector
+	local sideMovement = moveDirection:Dot(rightVector)
 
-	-- 3. Layered Headbob (Simulating steps so the camera isn't stiff as a board)
-	local bobX = 0
-	local bobY = 0
+	local targetTilt = -sideMovement * TILT_AMOUNT
 	
-	if speed > 1 then
-		if wallRunning then
-			bobY = math.sin(time() * 14) * 0.06 -- quick head bob while wall running
-			bobX = math.cos(time() * 7) * 0.03
-		elseif humanoid.FloorMaterial ~= Enum.Material.Air then
-			-- regular running headbob scaled by your current velocity magnitude
-			local bobMultiplier = math.clamp(speed / WALL_RUN_SPEED, 0.2, 1)
-			bobY = math.sin(time() * 12) * (0.04 * bobMultiplier)
-			bobX = math.cos(time() * 6) * (0.02 * bobMultiplier)
+	if wallRunning then
+		if currentWallSide == "Right" then
+			targetTilt = WALL_RUN_TILT
+		elseif currentWallSide == "Left" then
+			targetTilt = -WALL_RUN_TILT
 		end
 	end
+	
+	currentTilt += (targetTilt - currentTilt) * 0.12
 
-	-- 4. Handshake mathematics calculating camera trauma/shaking
-	if shakeIntensity > 0 then
-		shakeIntensity = math.max(0, shakeIntensity - (dt * shakeDecay))
+	-- Movement Sway
+	if speed > 2 and Humanoid.FloorMaterial ~= Enum.Material.Air then
+		swayTime += dt * SWAY_SPEED * (speed / 16)
+
+		local swayX = math.sin(swayTime) * SWAY_AMOUNT
+		local swayY = math.abs(math.cos(swayTime)) * SWAY_AMOUNT
+
+		Camera.CFrame *= CFrame.new(swayX, swayY, 0)
 	end
-	local appliedShakeX = (math.random(-100, 100) / 100) * shakeIntensity * 0.15
-	local appliedShakeY = (math.random(-100, 100) / 100) * shakeIntensity * 0.15
 
-	-- Inject offsets straight into the Roblox camera core system
-	humanoid.CameraOffset = Vector3.new(
-		(currentTilt * 0.035) + bobX + appliedShakeX, 
-		bobY + appliedShakeY, 
-		0
+	-- Camera Roll
+	Camera.CFrame *= CFrame.Angles(
+		0,
+		0,
+		math.rad(currentTilt)
 	)
-
-	-- 5. Combine camera tilt, keyboard lean, and impact vibration into the CFrame matrix
-	local finalRoll = currentTilt + cameraRoll + (appliedShakeX * 15)
-	camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, math.rad(finalRoll))
-
-	-- 6. Dynamic Field Of View changes based on speed (feels fast af)
-	local targetFOV = BASE_FOV
-	if wallRunning then
-		targetFOV = MAX_FOV
-	else
-		targetFOV = BASE_FOV + math.clamp(speed / 4, 0, (MAX_FOV - BASE_FOV))
-	end
-
-	camera.FieldOfView = camera.FieldOfView + (targetFOV - camera.FieldOfView) * math.clamp(dt * FOV_SMOOTHNESS, 0, 1)
 end)
