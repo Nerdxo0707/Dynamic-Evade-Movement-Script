@@ -28,7 +28,7 @@ local FOV_SMOOTHNESS = 0.1
 
 local TILT_AMOUNT = 5
 local SWAY_SPEED = 10
-local SWAY_AMOUNT = 0.10
+local SWAY_AMOUNT = 0.30
 
 -- WALL RUN EXTRA CAMERA TWIST
 local WALL_RUN_TILT = 14          -- leaning into the wall run hits different
