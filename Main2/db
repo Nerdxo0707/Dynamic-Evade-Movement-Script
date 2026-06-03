@@ -1,5 +1,4 @@
--- ngl this movement system goes crazy fr
--- LocalScript inside StarterPlayer > StarterPlayerScripts
+-- By Skitx
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -14,26 +13,21 @@ local Humanoid = CHARACTER:WaitForChild("Humanoid")
 local RootPart = CHARACTER:WaitForChild("HumanoidRootPart")
 local playerGui = Player:WaitForChild("PlayerGui")
 
--- MOVEMENT CONFIGS (DO NOT TOUCH UNLESS YOU HAVE THE 200 IQ)
-local WALL_RUN_SPEED = 50        -- buddy is zoomin
-local WALL_JUMP_POWER = 90       -- full send off the wall
-local WALL_CHECK_DISTANCE = 4    -- checking if the wall is a real one
-local MAX_WALL_RUN_TIME = 2.5    -- wall running has a time limit, no camping
+local WALL_RUN_SPEED = 50        
+local WALL_JUMP_POWER = 90       
+local WALL_CHECK_DISTANCE = 4    
+local MAX_WALL_RUN_TIME = 2.5    
 local ACCELERATION = 2.5
 
--- YOUR CUSTOM CAMERA VALUES (MAIN CHARACTER VIBES Only)
 local BASE_FOV = 70
 local MAX_FOV = 82
 local FOV_SMOOTHNESS = 0.1
 
 local TILT_AMOUNT = 5
 local SWAY_SPEED = 10
-local SWAY_AMOUNT = 0.30
+local SWAY_AMOUNT = 0.08
+local WALL_RUN_TILT = 14          
 
--- WALL RUN EXTRA CAMERA TWIST
-local WALL_RUN_TILT = 14          -- leaning into the wall run hits different
-
--- STATE VARIABLES (LET THEM COOK)
 local wallRunning = false
 local wallRunStart = 0
 local currentWallNormal = nil
@@ -48,23 +42,60 @@ local swayTime = 0
 
 Camera.FieldOfView = BASE_FOV
 
--- --- THE ARIMO FONT OVERLORD SYSTEM (FORCING THE AESTHETIC) ---
-local function forceArimoFont(object)
+local textGradientSequence = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), 
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 160, 160))  
+})
+
+local bgGradientSequence = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),    
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 15))     
+})
+
+local function forceGradientAndArimo(object)
 	if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
 		object.Font = Enum.Font.Arimo
+		object.TextColor3 = Color3.new(1, 1, 1) 
+		
+		if not object:FindFirstChildOfClass("UIGradient") then
+			local textGrad = Instance.new("UIGradient")
+			textGrad.Color = textGradientSequence
+			textGrad.Rotation = 90 
+			textGrad.Parent = object
+		end
+		
+		if object.BackgroundTransparency < 1 then
+			object.BackgroundColor3 = Color3.new(1, 1, 1) 
+			local bgGrad = Instance.new("UIGradient")
+			bgGrad.Color = bgGradientSequence
+			bgGrad.Rotation = 90
+			bgGrad.Parent = object
+		end
+	end
+	
+	if object:IsA("Frame") or object:IsA("ScrollingFrame") then
+		if object.BackgroundTransparency < 1 and not object:FindFirstChildOfClass("UIGradient") then
+			object.BackgroundColor3 = Color3.new(1, 1, 1)
+			local frameGrad = Instance.new("UIGradient")
+			frameGrad.Color = bgGradientSequence
+			frameGrad.Rotation = 90
+			frameGrad.Parent = object
+		end
+	end
+	
+	if object:IsA("UIStroke") then
+		object.Color = Color3.fromRGB(20, 20, 20)
 	end
 end
 
 for _, descendant in ipairs(playerGui:GetDescendants()) do
-	forceArimoFont(descendant)
+	forceGradientAndArimo(descendant)
 end
 
 playerGui.DescendantAdded:Connect(function(descendant)
-	forceArimoFont(descendant)
+	forceGradientAndArimo(descendant)
 end)
--- -------------------------------------------------------------
 
--- --- THE MAIN CHARACTER ENTERS THE CHAT ("Skitx" Pop-up) ---
 local function runStartupSequence()
 	local startupGui = Instance.new("ScreenGui")
 	startupGui.Name = "SkitxStartupGui"
@@ -73,14 +104,19 @@ local function runStartupSequence()
 
 	local startupLabel = Instance.new("TextLabel")
 	startupLabel.Size = UDim2.new(1, 0, 0.1, 0)
-	startupLabel.Position = UDim2.new(0, 0, 0.45, 0) -- dead center, built different
+	startupLabel.Position = UDim2.new(0, 0, 0.45, 0) 
 	startupLabel.BackgroundTransparency = 1
 	startupLabel.Text = "Skitx"
-	startupLabel.TextColor3 = Color3.new(1, 1, 1) -- pure clean white aesthetic
+	startupLabel.TextColor3 = Color3.new(1, 1, 1)
 	startupLabel.Font = Enum.Font.Arimo
 	startupLabel.TextSize = 36
-	startupLabel.TextTransparency = 1 -- start invisible, lowkey suspenseful
+	startupLabel.TextTransparency = 1
 	startupLabel.Parent = startupGui
+
+	local titleGrad = Instance.new("UIGradient")
+	titleGrad.Color = textGradientSequence
+	titleGrad.Rotation = 90
+	titleGrad.Parent = startupLabel
 
 	local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tweenInfoOut = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
@@ -90,16 +126,15 @@ local function runStartupSequence()
 
 	fadeIn:Play()
 	fadeIn.Completed:Connect(function()
-		task.wait(1.2) -- letting it sit there so they see who made it
+		task.wait(1.2)
 		fadeOut:Play()
 		fadeOut.Completed:Connect(function()
-			startupGui:Destroy() -- delete from existence, tidy code fr
+			startupGui:Destroy()
 		end)
 	end)
 end
 
 runStartupSequence()
--- -------------------------------------
 
 local function CharacterAdded(char)
 	CHARACTER = char
@@ -153,7 +188,7 @@ end
 
 UserInputService.JumpRequest:Connect(function()
 	if not wallRunning or wallJumpCooldown or not currentWallNormal or not RootPart then
-		return -- clear skill issue
+		return
 	end
 
 	wallJumpCooldown = true
@@ -186,7 +221,7 @@ RunService.Heartbeat:Connect(function(dt)
 
 	if wallRunning then
 		if tick() - wallRunStart > MAX_WALL_RUN_TIME then
-			stopWallRun() -- fell off + ratio
+			stopWallRun()
 			return
 		end
 
@@ -210,7 +245,6 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
--- --- YOUR UPGRADED RENDER LOOP SYSTEM ---
 RunService.RenderStepped:Connect(function(dt)
 	if not CHARACTER or not Humanoid or not RootPart then
 		return
@@ -220,18 +254,14 @@ RunService.RenderStepped:Connect(function(dt)
 	local velocity = RootPart.AssemblyLinearVelocity
 	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
 
-	-- Dynamic FOV
 	local targetFOV = BASE_FOV + math.clamp(speed / 2, 0, MAX_FOV - BASE_FOV)
 	Camera.FieldOfView += (targetFOV - Camera.FieldOfView) * FOV_SMOOTHNESS
 
-	-- Strafing Tilt Calculation
 	local rightVector = RootPart.CFrame.RightVector
 	local sideMovement = moveDirection:Dot(rightVector)
 
-	-- Base tilt from your strafe script
 	local targetTilt = -sideMovement * TILT_AMOUNT
 	
-	-- Inject extra structural tilt if we are running on a wall fr
 	if wallRunning then
 		if currentWallSide == "Right" then
 			targetTilt = WALL_RUN_TILT
@@ -242,7 +272,6 @@ RunService.RenderStepped:Connect(function(dt)
 	
 	currentTilt += (targetTilt - currentTilt) * 0.12
 
-	-- Movement Sway (Only happens while on solid ground)
 	if speed > 2 and Humanoid.FloorMaterial ~= Enum.Material.Air then
 		swayTime += dt * SWAY_SPEED * (speed / 16)
 
@@ -252,7 +281,6 @@ RunService.RenderStepped:Connect(function(dt)
 		Camera.CFrame *= CFrame.new(swayX, swayY, 0)
 	end
 
-	-- Camera Roll Matrix Multiplication
 	Camera.CFrame *= CFrame.Angles(
 		0,
 		0,
