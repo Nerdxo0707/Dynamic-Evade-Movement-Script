@@ -1,289 +1,219 @@
--- By Skitx
+-- Obfuscated by Skitx
+local _0x_O0oO = (function(...) return {...} end)(game, workspace, math, ColorSequence, ColorSequenceKeypoint, Color3, Instance, Enum, TweenInfo, task, Vector3, CFrame, tick)
+local _0x_Srvs = _0x_O0oO[1]
+local _0x_Wspc = _0x_O0oO[2]
+local _0x_Math = _0x_O0oO[3]
+local _0x_CSeq = _0x_O0oO[4]
+local _0x_CSKp = _0x_O0oO[5]
+local _0x_Clr3 = _0x_O0oO[6]
+local _0x_Inst = _0x_O0oO[7]
+local _0x_Enms = _0x_O0oO[8]
+local _0x_TInf = _0x_O0oO[9]
+local _0x_Task = _0x_O0oO[10]
+local _0x_Vec3 = _0x_O0oO[11]
+local _0x_Cfrm = _0x_O0oO[12]
+local _0x_Tick = _0x_O0oO[13]
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local _0x_Plrs = _0x_Srvs:GetService(string.reverse("sreyalP"))
+local _0x_RnSv = _0x_Srvs:GetService(string.reverse("ecivreSnur"))
+local _0x_UISv = _0x_Srvs:GetService(string.reverse("ecivreStupnInesU"))
+local _0x_TwSv = _0x_Srvs:GetService(string.reverse("ecivreSneewT"))
 
-local Player = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local _0x_LPlr = _0x_Plrs.LocalPlayer
+local _0x_Camr = _0x_Wspc.CurrentCamera
 
-local CHARACTER = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = CHARACTER:WaitForChild("Humanoid")
-local RootPart = CHARACTER:WaitForChild("HumanoidRootPart")
-local playerGui = Player:WaitForChild("PlayerGui")
+local _0x_Char = _0x_LPlr.Character or _0x_LPlr.CharacterAdded:Wait()
+local _0x_Hmd  = _0x_Char:WaitForChild(string.reverse("dionamuH"))
+local _0x_RPart = _0x_Char:WaitForChild(string.reverse("traPtooRdaionamuH"))
+local _0x_PGui = _0x_LPlr:WaitForChild(string.reverse("iuGreyalP"))
 
-local WALL_RUN_SPEED = 50        
-local WALL_JUMP_POWER = 90       
-local WALL_CHECK_DISTANCE = 4    
-local MAX_WALL_RUN_TIME = 2.5    
-local ACCELERATION = 2.5
+local _0x_V1 = (100 - 50)
+local _0x_V2 = (45 * 2)
+local _0x_V3 = (16 / 4)
+local _0x_V4 = (5 / 2)
+local _0x_V5 = (5 * 0.5)
+local _0x_V6 = (140 / 2)
+local _0x_V7 = (164 / 2)
+local _0x_V8 = (1 / 10)
+local _0x_V9 = (10 - 5)
+local _0x_V10 = (20 / 2)
+local _0x_V11 = (8 / 100)
+local _0x_V12 = (28 / 2)
 
-local BASE_FOV = 70
-local MAX_FOV = 82
-local FOV_SMOOTHNESS = 0.1
+local _0x_F1 = false
+local _0x_F2 = 0
+local _0x_F3 = nil
+local _0x_F4 = nil
+local _0x_F5 = 0
+local _0x_F6 = false
+local _0x_F7 = false
+local _0x_F8 = 0
+local _0x_F9 = 0
 
-local TILT_AMOUNT = 5
-local SWAY_SPEED = 10
-local SWAY_AMOUNT = 0.08
-local WALL_RUN_TILT = 14          
+_0x_Camr.FieldOfView = _0x_V6
 
-local wallRunning = false
-local wallRunStart = 0
-local currentWallNormal = nil
-local currentWallSide = nil
-local currentSpeed = 0
+local _0x_GradS1 = _0x_CSeq.new({_0x_CSKp.new(0, _0x_Clr3.fromRGB(255, 255, 255)), _0x_CSKp.new(1, _0x_Clr3.fromRGB(160, 160, 160))})
+local _0x_GradS2 = _0x_CSeq.new({_0x_CSKp.new(0, _0x_Clr3.fromRGB(40, 40, 40)), _0x_CSKp.new(1, _0x_Clr3.fromRGB(15, 15, 15))})
 
-local wallJumping = false
-local wallJumpCooldown = false
-
-local currentTilt = 0
-local swayTime = 0
-
-Camera.FieldOfView = BASE_FOV
-
-local textGradientSequence = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), 
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 160, 160))  
-})
-
-local bgGradientSequence = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),    
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 15))     
-})
-
-local function forceGradientAndArimo(object)
-	if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
-		object.Font = Enum.Font.Arimo
-		object.TextColor3 = Color3.new(1, 1, 1) 
-		
-		if not object:FindFirstChildOfClass("UIGradient") then
-			local textGrad = Instance.new("UIGradient")
-			textGrad.Color = textGradientSequence
-			textGrad.Rotation = 90 
-			textGrad.Parent = object
+local function _0x_M1(obj)
+	if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+		obj.Font = _0x_Enms.Font.Arimo
+		obj.TextColor3 = _0x_Clr3.new(1, 1, 1)
+		if not obj:FindFirstChildOfClass("UIGradient") then
+			local g = _0x_Inst.new("UIGradient")
+			g.Color = _0x_GradS1
+			g.Rotation = 90
+			g.Parent = obj
 		end
-		
-		if object.BackgroundTransparency < 1 then
-			object.BackgroundColor3 = Color3.new(1, 1, 1) 
-			local bgGrad = Instance.new("UIGradient")
-			bgGrad.Color = bgGradientSequence
-			bgGrad.Rotation = 90
-			bgGrad.Parent = object
-		end
-	end
-	
-	if object:IsA("Frame") or object:IsA("ScrollingFrame") then
-		if object.BackgroundTransparency < 1 and not object:FindFirstChildOfClass("UIGradient") then
-			object.BackgroundColor3 = Color3.new(1, 1, 1)
-			local frameGrad = Instance.new("UIGradient")
-			frameGrad.Color = bgGradientSequence
-			frameGrad.Rotation = 90
-			frameGrad.Parent = object
+		if obj.BackgroundTransparency < 1 then
+			obj.BackgroundColor3 = _0x_Clr3.new(1, 1, 1)
+			local b = _0x_Inst.new("UIGradient")
+			b.Color = _0x_GradS2
+			b.Rotation = 90
+			b.Parent = obj
 		end
 	end
-	
-	if object:IsA("UIStroke") then
-		object.Color = Color3.fromRGB(20, 20, 20)
+	if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+		if obj.BackgroundTransparency < 1 and not obj:FindFirstChildOfClass("UIGradient") then
+			obj.BackgroundColor3 = _0x_Clr3.new(1, 1, 1)
+			local f = _0x_Inst.new("UIGradient")
+			f.Color = _0x_GradS2
+			f.Rotation = 90
+			f.Parent = obj
+		end
+	end
+	if obj:IsA("UIStroke") then
+		obj.Color = _0x_Clr3.fromRGB(20, 20, 20)
 	end
 end
 
-for _, descendant in ipairs(playerGui:GetDescendants()) do
-	forceGradientAndArimo(descendant)
-end
+for _, d in ipairs(_0x_PGui:GetDescendants()) do _0x_M1(d) end
+_0x_PGui.DescendantAdded:Connect(_0x_M1)
 
-playerGui.DescendantAdded:Connect(function(descendant)
-	forceGradientAndArimo(descendant)
-end)
-
-local function runStartupSequence()
-	local startupGui = Instance.new("ScreenGui")
-	startupGui.Name = "SkitxStartupGui"
-	startupGui.ResetOnSpawn = false
-	startupGui.Parent = playerGui
-
-	local startupLabel = Instance.new("TextLabel")
-	startupLabel.Size = UDim2.new(1, 0, 0.1, 0)
-	startupLabel.Position = UDim2.new(0, 0, 0.45, 0) 
-	startupLabel.BackgroundTransparency = 1
-	startupLabel.Text = "Skitx"
-	startupLabel.TextColor3 = Color3.new(1, 1, 1)
-	startupLabel.Font = Enum.Font.Arimo
-	startupLabel.TextSize = 36
-	startupLabel.TextTransparency = 1
-	startupLabel.Parent = startupGui
-
-	local titleGrad = Instance.new("UIGradient")
-	titleGrad.Color = textGradientSequence
-	titleGrad.Rotation = 90
-	titleGrad.Parent = startupLabel
-
-	local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local tweenInfoOut = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-
-	local fadeIn = TweenService:Create(startupLabel, tweenInfoIn, { TextTransparency = 0 })
-	local fadeOut = TweenService:Create(startupLabel, tweenInfoOut, { TextTransparency = 1 })
-
-	fadeIn:Play()
-	fadeIn.Completed:Connect(function()
-		task.wait(1.2)
-		fadeOut:Play()
-		fadeOut.Completed:Connect(function()
-			startupGui:Destroy()
-		end)
+local function _0x_M2()
+	local ui = _0x_Inst.new("ScreenGui")
+	ui.Name = "SkitxStartupGui"
+	ui.ResetOnSpawn = false
+	ui.Parent = _0x_PGui
+	local lbl = _0x_Inst.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 0.1, 0)
+	lbl.Position = UDim2.new(0, 0, 0.45, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = "Skitx"
+	lbl.TextColor3 = _0x_Clr3.new(1, 1, 1)
+	lbl.Font = _0x_Enms.Font.Arimo
+	lbl.TextSize = 36
+	lbl.TextTransparency = 1
+	lbl.Parent = ui
+	local tg = _0x_Inst.new("UIGradient")
+	tg.Color = _0x_GradS1
+	tg.Rotation = 90
+	tg.Parent = lbl
+	local tIn = _0x_TInf.new(0.5, _0x_Enms.EasingStyle.Quad, _0x_Enms.EasingDirection.Out)
+	local tOut = _0x_TInf.new(0.7, _0x_Enms.EasingStyle.Quad, _0x_Enms.EasingDirection.In)
+	local fIn = _0x_TwSv:Create(lbl, tIn, {TextTransparency = 0})
+	local fOut = _0x_TwSv:Create(lbl, tOut, {TextTransparency = 1})
+	fIn:Play()
+	fIn.Completed:Connect(function()
+		_0x_Task.wait(1.2)
+		fOut:Play()
+		fOut.Completed:Connect(function() ui:Destroy() end)
 	end)
 end
+_0x_M2()
 
-runStartupSequence()
+_0x_Plrs.LocalPlayer.CharacterAdded:Connect(function(c)
+	_0x_Char = c
+	_0x_Hmd = c:WaitForChild(string.reverse("dionamuH"))
+	_0x_RPart = c:WaitForChild(string.reverse("traPtooRdaionamuH"))
+	_0x_F1, _0x_F6, _0x_F5, _0x_F8, _0x_F9 = false, false, 0, 0, 0
+end)
 
-local function CharacterAdded(char)
-	CHARACTER = char
-	Humanoid = char:WaitForChild("Humanoid")
-	RootPart = char:WaitForChild("HumanoidRootPart")
-	
-	wallRunning = false
-	wallJumping = false
-	currentSpeed = 0
-	currentTilt = 0
-	swayTime = 0
-end
-
-Player.CharacterAdded:Connect(CharacterAdded)
-
-local function getWall()
-	if not RootPart then
-		return nil
-	end
-
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = {CHARACTER}
-
-	local rightRay = workspace:Raycast(RootPart.Position, RootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
-	if rightRay then return rightRay, "Right" end
-
-	local leftRay = workspace:Raycast(RootPart.Position, -RootPart.CFrame.RightVector * WALL_CHECK_DISTANCE, params)
-	if leftRay then return leftRay, "Left" end
-
+local function _0x_M3()
+	if not _0x_RPart then return nil end
+	local p = RaycastParams.new()
+	p.FilterType = _0x_Enms.RaycastFilterType.Exclude
+	p.FilterDescendantsInstances = {_0x_Char}
+	local r = _0x_Wspc:Raycast(_0x_RPart.Position, _0x_RPart.CFrame.RightVector * _0x_V3, p)
+	if r then return r, "Right" end
+	local l = _0x_Wspc:Raycast(_0x_RPart.Position, -_0x_RPart.CFrame.RightVector * _0x_V3, p)
+	if l then return l, "Left" end
 	return nil
 end
 
-local function stopWallRun()
-	wallRunning = false
-	currentWallNormal = nil
-	currentWallSide = nil
+local function _0x_M4()
+	_0x_F1 = false
+	_0x_F3 = nil
+	_0x_F4 = nil
 end
 
-local function startWallRun(hit, side)
-	if wallRunning or wallJumping then
-		return
-	end
-
-	wallRunning = true
-	wallRunStart = tick()
-	currentWallNormal = hit.Normal
-	currentWallSide = side
-	currentSpeed = math.max(currentSpeed, 15)
+local function _0x_M5(h, s)
+	if _0x_F1 or _0x_F6 then return end
+	_0x_F1 = true
+	_0x_F2 = _0x_Tick()
+	_0x_F3 = h.Normal
+	_0x_F4 = s
+	_0x_F5 = _0x_Math.max(_0x_F5, 15)
 end
 
-UserInputService.JumpRequest:Connect(function()
-	if not wallRunning or wallJumpCooldown or not currentWallNormal or not RootPart then
-		return
-	end
-
-	wallJumpCooldown = true
-	wallJumping = true
-
-	local jumpVelocity = (currentWallNormal * WALL_JUMP_POWER) + Vector3.new(0, 55, 0)
-	RootPart.AssemblyLinearVelocity = jumpVelocity
-
-	stopWallRun()
-
-	task.delay(0.3, function() wallJumping = false end)
-	task.delay(0.25, function() wallJumpCooldown = false end)
+_0x_UISv.JumpRequest:Connect(function()
+	if not _0x_F1 or _0x_F7 or not _0x_F3 or not _0x_RPart then return end
+	_0x_F7 = true
+	_0x_F6 = true
+	_0x_RPart.AssemblyLinearVelocity = (_0x_F3 * _0x_V2) + _0x_Vec3.new(0, 55, 0)
+	_0x_M4()
+	_0x_Task.delay(0.3, function() _0x_F6 = false end)
+	_0x_Task.delay(0.25, function() _0x_F7 = false end)
 end)
 
-RunService.Heartbeat:Connect(function(dt)
-	if not Humanoid or not RootPart then
-		return
-	end
-
-	if not wallJumping and Humanoid.FloorMaterial == Enum.Material.Air then
-		local wall, side = getWall()
-		if wall then
-			if not wallRunning then startWallRun(wall, side) else currentWallNormal = wall.Normal; currentWallSide = side end
+_0x_RnSv.Heartbeat:Connect(function(dt)
+	if not _0x_Hmd or not _0x_RPart then return end
+	if not _0x_F6 and _0x_Hmd.FloorMaterial == _0x_Enms.Material.Air then
+		local w, s = _0x_M3()
+		if w then
+			if not _0x_F1 then _0x_M5(w, s) else _0x_F3 = w.Normal _0x_F4 = s end
 		else
-			stopWallRun()
+			_0x_M4()
 		end
 	else
-		if not wallJumping then stopWallRun() end
+		if not _0x_F6 then _0x_M4() end
 	end
-
-	if wallRunning then
-		if tick() - wallRunStart > MAX_WALL_RUN_TIME then
-			stopWallRun()
+	if _0x_F1 then
+		if _0x_Tick() - _0x_F2 > _0x_V4 then
+			_0x_M4()
 			return
 		end
-
-		local wallDirection = currentWallNormal:Cross(Vector3.new(0, 1, 0))
-		local moveDir = Humanoid.MoveDirection
-
-		if moveDir.Magnitude > 0 and moveDir:Dot(wallDirection) < 0 then
-			wallDirection = -wallDirection
-		end
-
-		currentSpeed = math.min(currentSpeed + (ACCELERATION * 60 * dt), WALL_RUN_SPEED)
-		local currentVelocity = RootPart.AssemblyLinearVelocity
-
-		RootPart.AssemblyLinearVelocity = Vector3.new(
-			wallDirection.X * currentSpeed,
-			math.max(currentVelocity.Y, -2),
-			wallDirection.Z * currentSpeed
-		)
+		local wd = _0x_F3:Cross(_0x_Vec3.new(0, 1, 0))
+		local md = _0x_Hmd.MoveDirection
+		if md.Magnitude > 0 and md:Dot(wd) < 0 then wd = -wd end
+		_0x_F5 = _0x_Math.min(_0x_F5 + (_0x_V5 * 60 * dt), _0x_V1)
+		local cv = _0x_RPart.AssemblyLinearVelocity
+		_0x_RPart.AssemblyLinearVelocity = _0x_Vec3.new(wd.X * _0x_F5, _0x_Math.max(cv.Y, -2), wd.Z * _0x_F5)
 	else
-		currentSpeed *= 0.96
+		_0x_F5 *= 0.96
 	end
 end)
 
-RunService.RenderStepped:Connect(function(dt)
-	if not CHARACTER or not Humanoid or not RootPart then
-		return
+_0x_RnSv.RenderStepped:Connect(function(dt)
+	if not _0x_Char or not _0x_Hmd or not _0x_RPart then return end
+	local md = _0x_Hmd.MoveDirection
+	local vel = _0x_RPart.AssemblyLinearVelocity
+	local spd = _0x_Vec3.new(vel.X, 0, vel.Z).Magnitude
+	local tFov = _0x_V6 + _0x_Math.clamp(spd / 2, 0, _0x_V7 - _0x_V6)
+	_0x_Camr.FieldOfView += (tFov - _0x_Camr.FieldOfView) * _0x_V8
+	local rV = _0x_RPart.CFrame.RightVector
+	local sMv = md:Dot(rV)
+	local tTilt = -sMv * _0x_V9
+	if _0x_F1 then
+		if _0x_F4 == "Right" then tTilt = _0x_V12 elseif _0x_F4 == "Left" then tTilt = -_0x_V12 end
 	end
-
-	local moveDirection = Humanoid.MoveDirection
-	local velocity = RootPart.AssemblyLinearVelocity
-	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
-
-	local targetFOV = BASE_FOV + math.clamp(speed / 2, 0, MAX_FOV - BASE_FOV)
-	Camera.FieldOfView += (targetFOV - Camera.FieldOfView) * FOV_SMOOTHNESS
-
-	local rightVector = RootPart.CFrame.RightVector
-	local sideMovement = moveDirection:Dot(rightVector)
-
-	local targetTilt = -sideMovement * TILT_AMOUNT
-	
-	if wallRunning then
-		if currentWallSide == "Right" then
-			targetTilt = WALL_RUN_TILT
-		elseif currentWallSide == "Left" then
-			targetTilt = -WALL_RUN_TILT
-		end
+	_0x_F8 += (tTilt - _0x_F8) * 0.12
+	if spd > 2 and _0x_Hmd.FloorMaterial ~= _0x_Enms.Material.Air then
+		_0x_F9 += dt * _0x_V10 * (spd / 16)
+		local sX = _0x_Math.sin(_0x_F9) * _0x_V11
+		local sY = _0x_Math.abs(_0x_Math.cos(_0x_F9)) * _0x_V11
+		_0x_Camr.CFrame *= _0x_Cfrm.new(sX, sY, 0)
 	end
-	
-	currentTilt += (targetTilt - currentTilt) * 0.12
-
-	if speed > 2 and Humanoid.FloorMaterial ~= Enum.Material.Air then
-		swayTime += dt * SWAY_SPEED * (speed / 16)
-
-		local swayX = math.sin(swayTime) * SWAY_AMOUNT
-		local swayY = math.abs(math.cos(swayTime)) * SWAY_AMOUNT
-
-		Camera.CFrame *= CFrame.new(swayX, swayY, 0)
-	end
-
-	Camera.CFrame *= CFrame.Angles(
-		0,
-		0,
-		math.rad(currentTilt)
-	)
+	_0x_Camr.CFrame *= _0x_Cfrm.Angles(0, 0, _0x_Math.rad(_0x_F8))
 end)
+
